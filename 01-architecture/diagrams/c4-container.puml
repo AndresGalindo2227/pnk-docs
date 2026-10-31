@@ -1,0 +1,27 @@
+@startuml c4-container
+' C4 Level 2 - Containers of PANENKA Booking
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+title PANENKA Booking - Containers (C4 Level 2)
+
+Person(player, "Player")
+Person(admin, "PANENKA admin")
+
+System_Boundary(pnk, "PANENKA Booking") {
+  Container(app, "pnk-app", "Ionic 9 + Angular 22 + Capacitor 8", "Android app and PWA for players")
+  Container(portal, "pnk-portal", "Angular 22", "Admin web portal")
+  Container(api, "pnk-api", "PHP 8, REST /api/v1, JWT", "Business rules, auth and validation")
+  ContainerDb(db, "MySQL 8 (InvFox database)", "InnoDB, utf8mb4", "Bookings, booking_slots, payments, players, POS tables")
+  Container(local, "Local storage", "Capacitor Preferences", "Cached my-bookings and queued receipt photos")
+}
+
+System_Ext(invfox, "InvFox POS", "PHP server-rendered app")
+
+Rel(player, app, "Uses")
+Rel(admin, portal, "Uses")
+Rel(app, api, "JSON over HTTPS", "Bearer JWT")
+Rel(portal, api, "JSON over HTTPS", "Bearer JWT, admin role")
+Rel(app, local, "Reads/writes offline cache")
+Rel(api, db, "PDO, transactions")
+Rel(invfox, db, "PDO")
+@enduml
