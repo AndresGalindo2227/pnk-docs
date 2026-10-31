@@ -1,0 +1,13 @@
+# Redocly CLI configuration for the PANENKA Booking API contract.
+# Run from the repository root: npx @redocly/cli lint
+apis:
+  pnk-api@v1:
+    root: 03-api-and-data/openapi.yaml
+
+extends:
+  - recommended
+
+rules:
+  # The contract only lists local servers (Prism mock and XAMPP) until a
+  # production domain exists. Re-enable this rule when it is added.
+  no-server-example.com: off

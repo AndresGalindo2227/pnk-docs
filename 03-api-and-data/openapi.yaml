@@ -1,0 +1,774 @@
+openapi: 3.1.0
+
+info:
+  title: PANENKA Booking API
+  version: 0.1.0
+  summary: REST API for booking PANENKA synthetic soccer fields.
+  description: |
+    Contract-first (API First) definition of the booking module integrated with InvFox.
+    The mobile app (`pnk-app`), the admin portal (`pnk-portal`) and the backend (`pnk-api`)
+    are all built against this file. See ADR-005 and ADR-007 in `01-architecture/decisions/`.
+
+    **Conventions**
+    - All paths are under `/api/v1` (ADR-007). Changes inside v1 are additive only.
+    - Dates and times use ISO 8601 with the venue offset, e.g. `2026-11-05T18:00:00-05:00`.
+    - Money is an integer amount of Colombian pesos (COP), e.g. `70000`.
+    - Every error returns the `Error` body with a stable `code`.
+    - Resources that belong to another player answer `404`, never `403` (no disclosure).
+  contact:
+    name: Andres Felipe Galindo Davila
+    url: https://github.com/AndresGalindo2227
+  license:
+    name: MIT
+    identifier: MIT
+
+servers:
+  - url: http://localhost:4010/api/v1
+    description: Local mock server (Prism) generated from this file
+  - url: http://localhost/pnk-api/public/api/v1
+    description: Local pnk-api on XAMPP
+
+tags:
+  - name: Health
+    description: Service status and client configuration.
+  - name: Auth
+    description: Player sign-up, login and session refresh (HU-01, HU-02).
+  - name: Fields
+    description: Bookable fields and their availability (HU-03).
+  - name: Bookings
+    description: Create, list, view and cancel the player's own bookings (HU-04, HU-05, HU-06, HU-08).
+  - name: Payments
+    description: Deposit payment by transfer receipt or Wompi (HU-09, HU-10).
+  - name: Admin
+    description: Schedule and payment review for PANENKA staff (HU-11). Requires the admin role.
+
+security:
+  - bearerAuth: []
+
+paths:
+  # ---------------------------------------------------------------- Health
+  /health:
+    get:
+      tags: [Health]
+      operationId: getHealth
+      summary: Check that the API is up and running.
+      security: []
+      responses:
+        '200':
+          description: The API is available.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Health' }
+              example: { status: ok, version: 0.1.0 }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+
+  /config:
+    get:
+      tags: [Health]
+      operationId: getClientConfig
+      summary: Business rules and minimum supported app version (ADR-007).
+      description: Called at app start. If the installed app is older than `minAppVersion`, the app shows a blocking update screen.
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/AppVersion'
+      responses:
+        '200':
+          description: Current client configuration.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ClientConfig' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+
+  # ---------------------------------------------------------------- Auth
+  /auth/register:
+    post:
+      tags: [Auth]
+      operationId: registerPlayer
+      summary: Create a player account and start a session (HU-01).
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RegisterRequest' }
+      responses:
+        '201':
+          description: Account created; the player is logged in.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AuthSession' }
+        '409':
+          description: Email or phone already registered (`EMAIL_ALREADY_REGISTERED`, `PHONE_ALREADY_REGISTERED`).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { code: EMAIL_ALREADY_REGISTERED, message: This email is already registered. }
+        '422': { $ref: '#/components/responses/ValidationError' }
+
+  /auth/login:
+    post:
+      tags: [Auth]
+      operationId: login
+      summary: Log in with email and password.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LoginRequest' }
+      responses:
+        '200':
+          description: Valid credentials.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AuthSession' }
+        '401':
+          description: Wrong email or password (`INVALID_CREDENTIALS`). The message never says which one was wrong.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { code: INVALID_CREDENTIALS, message: Email or password is incorrect. }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+
+  /auth/refresh:
+    post:
+      tags: [Auth]
+      operationId: refreshSession
+      summary: Exchange a refresh token for a new token pair (HU-02).
+      description: |
+        The refresh token is **rotated**: the old one is revoked and a new one is returned.
+        Reusing a revoked token revokes every session of that player.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RefreshRequest' }
+      responses:
+        '200':
+          description: New token pair.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AuthSession' }
+        '401':
+          description: Refresh token expired, revoked or unknown (`SESSION_EXPIRED`). The app must log out.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /auth/logout:
+    post:
+      tags: [Auth]
+      operationId: logout
+      summary: Revoke the given refresh token.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RefreshRequest' }
+      responses:
+        '204': { description: Session closed. }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /me:
+    get:
+      tags: [Auth]
+      operationId: getCurrentPlayer
+      summary: Profile of the logged-in player.
+      responses:
+        '200':
+          description: Player profile.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Player' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  # ---------------------------------------------------------------- Fields
+  /fields:
+    get:
+      tags: [Fields]
+      operationId: listFields
+      summary: Active bookable fields with price and occupied sectors.
+      security: []
+      responses:
+        '200':
+          description: List of fields.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Field' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+
+  /availability:
+    get:
+      tags: [Fields]
+      operationId: getAvailability
+      summary: Free and taken hours of every field for one day (HU-03).
+      description: |
+        A slot is `available: false` when **any** sector of that field is held at that hour.
+        Example: if `Cancha 5A` is booked at 18:00, `Cancha 9` is unavailable at 18:00.
+        Past hours of today are returned as unavailable.
+      security: []
+      parameters:
+        - name: date
+          in: query
+          required: true
+          description: Day to check, in the venue time zone. Today up to 30 days ahead.
+          schema: { type: string, format: date, examples: ['2026-11-05'] }
+        - name: fieldId
+          in: query
+          required: false
+          description: Restrict the answer to one field.
+          schema: { type: integer, minimum: 1 }
+      responses:
+        '200':
+          description: Availability of the day.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DayAvailability' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+
+  # ---------------------------------------------------------------- Bookings
+  /bookings:
+    get:
+      tags: [Bookings]
+      operationId: listMyBookings
+      summary: Bookings of the logged-in player (HU-05).
+      description: The app caches this response to show it offline with a "last updated" label (ADR-004).
+      parameters:
+        - name: scope
+          in: query
+          required: false
+          schema: { type: string, enum: [upcoming, past], default: upcoming }
+      responses:
+        '200':
+          description: The player's bookings, nearest first.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Booking' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+    post:
+      tags: [Bookings]
+      operationId: createBooking
+      summary: Book a field (HU-04).
+      description: |
+        Inserts one `booking_slots` row per sector and hour inside a transaction. If any sector is
+        already held, the transaction rolls back and the API answers `409 SLOT_ALREADY_TAKEN` (ADR-004).
+        The booking starts as `pending` until the deposit is approved.
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: true
+          description: UUID generated by the app per booking attempt, so a retried request does not create two bookings.
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateBookingRequest' }
+      responses:
+        '201':
+          description: Booking created as pending.
+          headers:
+            Location:
+              description: URL of the new booking.
+              schema: { type: string }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Booking' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '409':
+          description: At least one requested hour is taken (`SLOT_ALREADY_TAKEN`).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { code: SLOT_ALREADY_TAKEN, message: The selected time slot is no longer available. }
+        '422': { $ref: '#/components/responses/ValidationError' }
+
+  /bookings/{bookingId}:
+    parameters:
+      - $ref: '#/components/parameters/BookingId'
+    get:
+      tags: [Bookings]
+      operationId: getBooking
+      summary: Detail of one of the player's bookings (HU-08).
+      responses:
+        '200':
+          description: Booking detail.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Booking' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /bookings/{bookingId}/cancel:
+    parameters:
+      - $ref: '#/components/parameters/BookingId'
+    post:
+      tags: [Bookings]
+      operationId: cancelBooking
+      summary: Cancel a booking at least `cancellationMinHours` before it starts (HU-06).
+      description: Releases its `booking_slots` rows so the hours become available again.
+      responses:
+        '200':
+          description: Booking cancelled.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Booking' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: Too late to cancel (`CANCELLATION_WINDOW_CLOSED`) or already cancelled/completed (`BOOKING_NOT_CANCELLABLE`).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { code: CANCELLATION_WINDOW_CLOSED, message: Bookings can only be cancelled up to 3 hours before they start. }
+
+  # ---------------------------------------------------------------- Payments
+  /bookings/{bookingId}/payments/receipt:
+    parameters:
+      - $ref: '#/components/parameters/BookingId'
+    post:
+      tags: [Payments]
+      operationId: uploadPaymentReceipt
+      summary: Upload a photo of the transfer receipt for the deposit (HU-09).
+      description: The app can queue this upload while offline and send it later (ADR-004).
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [photo, amount]
+              properties:
+                photo:
+                  type: string
+                  contentMediaType: image/jpeg
+                  description: JPEG compressed by the app, maximum 2 MB.
+                amount:
+                  type: integer
+                  minimum: 1
+                  description: Amount shown on the receipt, in COP.
+      responses:
+        '201':
+          description: Receipt stored; waiting for admin review.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Payment' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '413':
+          description: File larger than 2 MB (`FILE_TOO_LARGE`).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+
+  /bookings/{bookingId}/payments/wompi:
+    parameters:
+      - $ref: '#/components/parameters/BookingId'
+    post:
+      tags: [Payments]
+      operationId: startWompiPayment
+      summary: Prepare a Wompi checkout for the deposit (HU-10).
+      description: Returns the data the app needs to open the Wompi web checkout. The result arrives later through the webhook.
+      responses:
+        '201':
+          description: Checkout data.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WompiCheckout' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /webhooks/wompi:
+    post:
+      tags: [Payments]
+      operationId: receiveWompiEvent
+      summary: Wompi transaction event (server to server).
+      description: The API verifies the event checksum with the Wompi events secret before trusting it. Repeated events are ignored (unique `provider_reference`).
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: Event body defined by Wompi.
+              additionalProperties: true
+      responses:
+        '200': { description: Event accepted (also for duplicates). }
+        '400':
+          description: Invalid checksum (`INVALID_SIGNATURE`).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  # ---------------------------------------------------------------- Admin
+  /admin/schedule:
+    get:
+      tags: [Admin]
+      operationId: getAdminSchedule
+      summary: All bookings of one day with player contact (HU-11).
+      parameters:
+        - name: date
+          in: query
+          required: true
+          schema: { type: string, format: date }
+      responses:
+        '200':
+          description: Bookings of the day.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/AdminBooking' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /admin/payments:
+    get:
+      tags: [Admin]
+      operationId: listPaymentsForReview
+      summary: Payments filtered by status, oldest first (HU-11).
+      parameters:
+        - name: status
+          in: query
+          schema: { type: string, enum: [pending, approved, rejected], default: pending }
+      responses:
+        '200':
+          description: Payments.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Payment' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /admin/payments/{paymentId}/review:
+    parameters:
+      - name: paymentId
+        in: path
+        required: true
+        schema: { type: integer, minimum: 1 }
+    post:
+      tags: [Admin]
+      operationId: reviewPayment
+      summary: Approve or reject a transfer receipt (HU-11).
+      description: Approving confirms the booking and registers the deposit as a sale in InvFox.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ReviewPaymentRequest' }
+      responses:
+        '200':
+          description: Payment reviewed.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Payment' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: Payment already reviewed (`PAYMENT_ALREADY_REVIEWED`).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Access token valid for 15 minutes, obtained from login, register or refresh.
+
+  parameters:
+    BookingId:
+      name: bookingId
+      in: path
+      required: true
+      schema: { type: integer, minimum: 1 }
+    AppVersion:
+      name: X-App-Version
+      in: header
+      required: false
+      description: SemVer of the installed app, e.g. 1.0.0 (ADR-007).
+      schema: { type: string }
+
+  responses:
+    Unauthorized:
+      description: Missing, invalid or expired access token (`UNAUTHORIZED`). The app tries `/auth/refresh` once.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example: { code: UNAUTHORIZED, message: Your session has expired. }
+    Forbidden:
+      description: Logged in but without the admin role (`FORBIDDEN`).
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    NotFound:
+      description: The resource does not exist **or belongs to another player** (`NOT_FOUND`).
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example: { code: NOT_FOUND, message: Booking not found. }
+    ValidationError:
+      description: The request body or parameters are invalid (`VALIDATION_ERROR`).
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example:
+            code: VALIDATION_ERROR
+            message: Some fields are invalid.
+            details:
+              - { field: startsAt, issue: must be on the hour }
+    TooManyRequests:
+      description: Too many attempts; try again later (`TOO_MANY_REQUESTS`).
+      headers:
+        Retry-After:
+          schema: { type: integer }
+          description: Seconds to wait.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+
+  schemas:
+    Health:
+      type: object
+      required: [status, version]
+      properties:
+        status: { type: string, enum: [ok] }
+        version: { type: string, examples: ['0.1.0'] }
+
+    Error:
+      type: object
+      description: Standard error body returned by every failed request.
+      required: [code, message]
+      properties:
+        code:
+          type: string
+          description: Stable, machine-readable error code (see the catalog in README.md).
+          examples: [SLOT_ALREADY_TAKEN]
+        message:
+          type: string
+          description: Human-readable explanation, safe to show to the user.
+        details:
+          type: array
+          description: Per-field problems, only for `VALIDATION_ERROR`.
+          items:
+            type: object
+            required: [field, issue]
+            properties:
+              field: { type: string }
+              issue: { type: string }
+
+    ClientConfig:
+      type: object
+      required: [minAppVersion, timezone, currency, opensAt, closesAt, slotMinutes, depositPercent, cancellationMinHours, maxDaysAhead]
+      properties:
+        minAppVersion: { type: string, examples: ['1.0.0'] }
+        timezone: { type: string, examples: [America/Bogota] }
+        currency: { type: string, examples: [COP] }
+        opensAt: { type: string, pattern: '^\d{2}:\d{2}$', examples: ['08:00'] }
+        closesAt: { type: string, pattern: '^\d{2}:\d{2}$', examples: ['23:00'] }
+        slotMinutes: { type: integer, examples: [60] }
+        depositPercent: { type: integer, minimum: 0, maximum: 100, examples: [50] }
+        cancellationMinHours: { type: integer, examples: [3] }
+        maxDaysAhead: { type: integer, examples: [30] }
+
+    RegisterRequest:
+      type: object
+      required: [fullName, email, phone, password]
+      properties:
+        fullName: { type: string, minLength: 3, maxLength: 150 }
+        email: { type: string, format: email, maxLength: 150 }
+        phone:
+          type: string
+          pattern: '^3\d{9}$'
+          description: Colombian mobile number, 10 digits.
+          examples: ['3101234567']
+        password: { type: string, minLength: 8, maxLength: 72, writeOnly: true }
+
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email: { type: string, format: email }
+        password: { type: string, writeOnly: true }
+
+    RefreshRequest:
+      type: object
+      required: [refreshToken]
+      properties:
+        refreshToken: { type: string }
+
+    AuthSession:
+      type: object
+      required: [accessToken, accessTokenExpiresIn, refreshToken, player]
+      properties:
+        accessToken: { type: string, description: 'JWT, valid for 15 minutes.' }
+        accessTokenExpiresIn: { type: integer, description: Seconds., examples: [900] }
+        refreshToken: { type: string, description: 'Opaque random token, 7 days; stored by the app in secure storage.' }
+        player: { $ref: '#/components/schemas/Player' }
+
+    Player:
+      type: object
+      required: [id, fullName, email, phone, role]
+      properties:
+        id: { type: integer }
+        fullName: { type: string }
+        email: { type: string, format: email }
+        phone: { type: string }
+        role: { type: string, enum: [player, admin] }
+
+    Field:
+      type: object
+      required: [id, name, fieldType, hourlyPrice, sectors]
+      properties:
+        id: { type: integer, examples: [4] }
+        name: { type: string, examples: [Cancha 9] }
+        fieldType: { type: string, enum: [F5, F7, F9, F11] }
+        hourlyPrice: { type: integer, description: COP., examples: [210000] }
+        sectors:
+          type: array
+          description: Physical sectors this field occupies.
+          items: { type: string }
+          examples: [[Sector A, Sector B, Sector C]]
+
+    DayAvailability:
+      type: object
+      required: [date, fields]
+      properties:
+        date: { type: string, format: date }
+        fields:
+          type: array
+          items:
+            type: object
+            required: [fieldId, name, hourlyPrice, slots]
+            properties:
+              fieldId: { type: integer }
+              name: { type: string }
+              hourlyPrice: { type: integer }
+              slots:
+                type: array
+                items: { $ref: '#/components/schemas/Slot' }
+      example:
+        date: '2026-11-05'
+        fields:
+          - fieldId: 1
+            name: Cancha 5A
+            hourlyPrice: 70000
+            slots:
+              - { startsAt: '2026-11-05T18:00:00-05:00', available: false }
+              - { startsAt: '2026-11-05T19:00:00-05:00', available: true }
+          - fieldId: 4
+            name: Cancha 9
+            hourlyPrice: 210000
+            slots:
+              - { startsAt: '2026-11-05T18:00:00-05:00', available: false }
+              - { startsAt: '2026-11-05T19:00:00-05:00', available: true }
+
+    Slot:
+      type: object
+      required: [startsAt, available]
+      properties:
+        startsAt: { type: string, format: date-time }
+        available: { type: boolean }
+
+    CreateBookingRequest:
+      type: object
+      required: [fieldId, startsAt, hours]
+      properties:
+        fieldId: { type: integer, minimum: 1 }
+        startsAt:
+          type: string
+          format: date-time
+          description: Must be on the hour, in the future and within opening hours.
+          examples: ['2026-11-05T19:00:00-05:00']
+        hours: { type: integer, minimum: 1, maximum: 3, default: 1 }
+
+    Booking:
+      type: object
+      required: [id, code, field, startsAt, endsAt, status, totalAmount, depositAmount, canCancel, createdAt]
+      properties:
+        id: { type: integer }
+        code: { type: string, examples: [PNK-2611-0087] }
+        field:
+          type: object
+          required: [id, name]
+          properties:
+            id: { type: integer }
+            name: { type: string }
+        startsAt: { type: string, format: date-time }
+        endsAt: { type: string, format: date-time }
+        status: { $ref: '#/components/schemas/BookingStatus' }
+        totalAmount: { type: integer, examples: [70000] }
+        depositAmount: { type: integer, examples: [35000] }
+        paymentStatus:
+          type: [string, 'null']
+          enum: [pending, approved, rejected, null]
+          description: Status of the latest payment, or null if none was sent.
+        canCancel: { type: boolean, description: Calculated by the server with the cancellation window. }
+        createdAt: { type: string, format: date-time }
+
+    BookingStatus:
+      type: string
+      enum: [pending, confirmed, cancelled, completed, no_show]
+
+    AdminBooking:
+      allOf:
+        - $ref: '#/components/schemas/Booking'
+        - type: object
+          required: [player]
+          properties:
+            player:
+              type: object
+              required: [id, fullName, phone]
+              properties:
+                id: { type: integer }
+                fullName: { type: string }
+                phone: { type: string }
+
+    Payment:
+      type: object
+      required: [id, bookingId, method, amount, status, createdAt]
+      properties:
+        id: { type: integer }
+        bookingId: { type: integer }
+        method: { type: string, enum: [wompi, transfer_receipt, cash] }
+        amount: { type: integer }
+        status: { type: string, enum: [pending, approved, rejected] }
+        receiptUrl: { type: [string, 'null'], description: Short-lived signed URL; admin only. }
+        rejectionReason: { type: [string, 'null'] }
+        createdAt: { type: string, format: date-time }
+
+    WompiCheckout:
+      type: object
+      required: [checkoutUrl, reference, amountInCents]
+      properties:
+        checkoutUrl: { type: string, format: uri }
+        reference: { type: string, description: Unique reference sent to Wompi. }
+        amountInCents: { type: integer, examples: [3500000] }
+
+    ReviewPaymentRequest:
+      type: object
+      required: [decision]
+      properties:
+        decision: { type: string, enum: [approve, reject] }
+        rejectionReason:
+          type: string
+          maxLength: 255
+          description: Required when decision is reject.
+      if:
+        properties: { decision: { const: reject } }
+      then:
+        required: [rejectionReason]
+        properties:
+          rejectionReason: { type: string, minLength: 3 }
