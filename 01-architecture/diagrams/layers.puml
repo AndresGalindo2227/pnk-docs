@@ -1,0 +1,40 @@
+@startuml layers
+' Layer rule of pnk-app: presentation -> domain <- data
+title pnk-app - Feature-first layers (one feature)
+
+skinparam componentStyle rectangle
+
+package "features/bookings" {
+  package "presentation" {
+    [CreateBookingPage] as page
+    [BookingStore\n(state as signal)] as store
+  }
+  package "domain" {
+    [CreateBooking\n(use case)] as uc
+    interface "BookingRepository\n(port)" as port
+    [Booking\n(entity)] as entity
+  }
+  package "data" {
+    [HttpBookingRepository\n(adapter)] as repo
+    [BookingDto + mapper] as dto
+  }
+}
+
+package "core" {
+  [HttpClient + interceptors\n(token, refresh, errors)] as http
+}
+
+page --> store : renders state,\ndelegates actions
+store --> uc : calls
+uc --> port : depends on
+uc --> entity
+repo ..|> port : implements
+repo --> dto
+repo --> http
+
+note bottom of domain
+  domain imports nothing from
+  presentation, data or Angular HTTP.
+  Enforced by ESLint no-restricted-imports.
+end note
+@enduml

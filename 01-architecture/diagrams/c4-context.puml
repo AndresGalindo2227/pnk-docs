@@ -1,0 +1,22 @@
+@startuml c4-context
+' C4 Level 1 - System context of PANENKA Booking
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Context.puml
+
+title PANENKA Booking - System context (C4 Level 1)
+
+Person(player, "Player", "Books and pays soccer fields from the mobile app or the web")
+Person(admin, "PANENKA admin", "Manages the schedule and approves payment receipts")
+Person(cashier, "Cashier", "Sells drinks and closes the cash register")
+
+System(booking, "PANENKA Booking", "Mobile app, PWA, admin portal and REST API for field bookings")
+System_Ext(invfox, "InvFox POS", "Existing PHP/MySQL point of sale; shares the database")
+System_Ext(wompi, "Wompi", "Online payment gateway (Should, V1.1)")
+System_Ext(fcm, "Device notifications", "Local reminders scheduled on the phone")
+
+Rel(player, booking, "Checks availability, books, cancels, uploads receipts", "HTTPS")
+Rel(admin, booking, "Manages schedule and receipts", "HTTPS")
+Rel(cashier, invfox, "Registers sales")
+Rel(booking, invfox, "Reads and writes the same MySQL database", "SQL")
+Rel(booking, wompi, "Creates payments, receives events", "HTTPS")
+Rel(booking, fcm, "Schedules booking reminders")
+@enduml
