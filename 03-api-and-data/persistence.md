@@ -1,28 +1,40 @@
-# Persistence (Local Database)
+# Persistence (on-device data)
 
 ## Choice
 
-- Choose **one** local store per app (SQLite/Room/Drift, Realm, or a key-value store) and
-  wrap it behind a repository interface. Record the choice in an ADR.
-- Keep persisted models **separate** from domain entities; map between them.
+PANENKA Booking does **not** need a local database: it caches a short list and queues a few
+uploads. V1 uses two key-value stores behind repository ports (ADR-008):
 
-## Naming
+| Store | Plugin | Holds |
+|-------|--------|-------|
+| Secure storage | `@aparajita/capacitor-secure-storage` (Keystore / Keychain) | Access and refresh tokens |
+| Preferences | `@capacitor/preferences` | Cached *Mis reservas*, last availability date viewed, receipt upload queue index |
+| Filesystem | `@capacitor/filesystem` (app data directory) | Receipt photos waiting to be uploaded |
 
-- Tables/collections: `snake_case`, plural — `orders`, `order_items`.
-- Primary key: `id`.
-- Foreign keys: `<entity_singular>_id` — `order_id`.
-- Timestamps on mutable records: `created_at`, `updated_at`.
-- Booleans: prefix `is_` / `has_`.
+SQLite is not used in V1. It would be reconsidered (new ADR) if the app ever needed offline
+queries or large data sets.
+
+## Keys
+
+| Key | Type | Content |
+|-----|------|---------|
+| `pnk.cache.myBookings.v1` | JSON | `{ savedAt, items: BookingCacheItem[] }` (upcoming bookings only) |
+| `pnk.prefs.lastDate.v1` | string | `YYYY-MM-DD` |
+| `pnk.queue.receipts.v1` | JSON | `[{ id, bookingId, amount, filePath, createdAt, attempts }]` |
+
+- Keys are namespaced `pnk.<area>.<name>.v<version>`.
+- Cached models (`BookingCacheItem`) are **separate** from domain entities; the data layer maps them.
 
 ## Rules
 
-- Store only what the app needs offline — do not mirror the entire backend.
-- All DB access goes through the data layer; screens never touch the DB.
-- Wrap multi-step writes in a transaction.
-- Define each entity with [`_template-entity.md`](./_template-entity.md).
+- Store only what the app needs offline: upcoming bookings of the logged-in player, never other
+  players' data, never payment card data.
+- All storage access goes through the data layer; pages never call Preferences directly.
+- Everything except the last viewed date is deleted on sign-out.
+- Server data (bookings, payments) lives in MySQL; its migrations are in
+  [`pnk-db`](https://github.com/AndresGalindo2227/pnk-db).
 
-## Migrations
+## Versioning of cached data
 
-- Every schema change ships a **versioned, forward-only** migration — never mutate an existing one.
-- Bump the local schema version on every structural change.
-- Test migrations against a **populated** database, not an empty one.
+- A structural change of a cached JSON bumps the key version (`.v1` → `.v2`). On start, the app
+  deletes unknown or old versions instead of trying to read them — the cache is rebuilt from the API.

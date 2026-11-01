@@ -2,7 +2,7 @@
 
 - **ID:** ADR-003
 - **Date:** 2026-10-18
-- **Status:** Proposed (to be confirmed after the performance check of Sprint 2)
+- **Status:** Accepted (2026-10-31)
 - **Authors:** Andrés Felipe Galindo Dávila
 
 ---
@@ -49,5 +49,15 @@ those pieces out of the box.
 
 **Negative / Trade-offs:** more initial ceremony than Vue.
 
-**Pending:** confirm smooth scrolling and start-up time on a mid-range Android device in Sprint 2,
-then change the status to Accepted (or supersede this ADR).
+**Follow-up:** smooth scrolling and start-up time are measured on a mid-range Android device in
+Sprint 2 against the budgets of `04-quality/performance-budgets.md`. If they are not met, a new ADR
+supersedes this one; this record is not edited.
+
+**Libraries chosen with the framework:**
+
+| Concern | Choice | Discarded |
+|---------|--------|-----------|
+| UI state | Angular Signals in one store per feature (ADR-001) | NgRx Store, NgRx SignalStore |
+| Async / HTTP | RxJS through `HttpClient` and interceptors | `fetch` wrappers, Axios |
+| Navigation | Angular Router, one route table, functional guards (ADR-002) | Per-page session checks |
+| Native | Capacitor 8 plugins behind ports | Cordova plugins |
