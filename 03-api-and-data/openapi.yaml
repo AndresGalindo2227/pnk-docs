@@ -2,7 +2,7 @@ openapi: 3.1.0
 
 info:
   title: PANENKA Booking API
-  version: 0.1.0
+  version: 0.2.0
   summary: REST API for booking PANENKA synthetic soccer fields.
   description: |
     Contract-first (API First) definition of the booking module integrated with InvFox.
@@ -23,8 +23,8 @@ info:
     identifier: MIT
 
 servers:
-  - url: http://localhost:4010/api/v1
-    description: Local mock server (Prism) generated from this file
+  - url: http://localhost:4010
+    description: Local mock server (Prism) generated from this file. Prism serves the paths without the /api/v1 prefix.
   - url: http://localhost/pnk-api/public/api/v1
     description: Local pnk-api on XAMPP
 
@@ -198,6 +198,11 @@ paths:
               schema:
                 type: array
                 items: { $ref: '#/components/schemas/Field' }
+              example:
+                - { id: 1, name: Cancha 5A, fieldType: F5, hourlyPrice: 70000, sectors: [Sector A] }
+                - { id: 2, name: Cancha 5B, fieldType: F5, hourlyPrice: 70000, sectors: [Sector B] }
+                - { id: 3, name: Cancha 5C, fieldType: F5, hourlyPrice: 70000, sectors: [Sector C] }
+                - { id: 4, name: Cancha 9, fieldType: F9, hourlyPrice: 210000, sectors: [Sector A, Sector B, Sector C] }
         '429': { $ref: '#/components/responses/TooManyRequests' }
 
   /availability:
@@ -227,6 +232,49 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/DayAvailability' }
+              example:
+                date: '2026-11-07'
+                fields:
+                  - fieldId: 1
+                    name: Cancha 5A
+                    hourlyPrice: 70000
+                    slots:
+                      - { startsAt: '2026-11-07T17:00:00-05:00', available: true }
+                      - { startsAt: '2026-11-07T18:00:00-05:00', available: false }
+                      - { startsAt: '2026-11-07T19:00:00-05:00', available: false }
+                      - { startsAt: '2026-11-07T20:00:00-05:00', available: false }
+                      - { startsAt: '2026-11-07T21:00:00-05:00', available: true }
+                      - { startsAt: '2026-11-07T22:00:00-05:00', available: true }
+                  - fieldId: 2
+                    name: Cancha 5B
+                    hourlyPrice: 70000
+                    slots:
+                      - { startsAt: '2026-11-07T17:00:00-05:00', available: true }
+                      - { startsAt: '2026-11-07T18:00:00-05:00', available: true }
+                      - { startsAt: '2026-11-07T19:00:00-05:00', available: false }
+                      - { startsAt: '2026-11-07T20:00:00-05:00', available: true }
+                      - { startsAt: '2026-11-07T21:00:00-05:00', available: false }
+                      - { startsAt: '2026-11-07T22:00:00-05:00', available: true }
+                  - fieldId: 3
+                    name: Cancha 5C
+                    hourlyPrice: 70000
+                    slots:
+                      - { startsAt: '2026-11-07T17:00:00-05:00', available: true }
+                      - { startsAt: '2026-11-07T18:00:00-05:00', available: true }
+                      - { startsAt: '2026-11-07T19:00:00-05:00', available: false }
+                      - { startsAt: '2026-11-07T20:00:00-05:00', available: true }
+                      - { startsAt: '2026-11-07T21:00:00-05:00', available: true }
+                      - { startsAt: '2026-11-07T22:00:00-05:00', available: true }
+                  - fieldId: 4
+                    name: Cancha 9
+                    hourlyPrice: 210000
+                    slots:
+                      - { startsAt: '2026-11-07T17:00:00-05:00', available: true }
+                      - { startsAt: '2026-11-07T18:00:00-05:00', available: false }
+                      - { startsAt: '2026-11-07T19:00:00-05:00', available: false }
+                      - { startsAt: '2026-11-07T20:00:00-05:00', available: false }
+                      - { startsAt: '2026-11-07T21:00:00-05:00', available: false }
+                      - { startsAt: '2026-11-07T22:00:00-05:00', available: true }
         '422': { $ref: '#/components/responses/ValidationError' }
 
   # ---------------------------------------------------------------- Bookings
@@ -249,6 +297,10 @@ paths:
               schema:
                 type: array
                 items: { $ref: '#/components/schemas/Booking' }
+              example:
+                - { id: 87, code: PNK-2611-0087, field: { id: 2, name: Cancha 5B }, startsAt: '2026-11-07T22:00:00-05:00', endsAt: '2026-11-07T23:00:00-05:00', status: pending, totalAmount: 70000, depositAmount: 35000, paymentStatus: null, canCancel: true, createdAt: '2026-11-02T10:15:00-05:00' }
+                - { id: 85, code: PNK-2611-0085, field: { id: 4, name: Cancha 9 }, startsAt: '2026-11-08T20:00:00-05:00', endsAt: '2026-11-08T22:00:00-05:00', status: confirmed, totalAmount: 420000, depositAmount: 210000, paymentStatus: approved, canCancel: true, createdAt: '2026-11-01T18:40:00-05:00' }
+                - { id: 81, code: PNK-2611-0081, field: { id: 1, name: Cancha 5A }, startsAt: '2026-11-11T18:00:00-05:00', endsAt: '2026-11-11T19:00:00-05:00', status: confirmed, totalAmount: 70000, depositAmount: 35000, paymentStatus: approved, canCancel: true, createdAt: '2026-10-30T09:05:00-05:00' }
         '401': { $ref: '#/components/responses/Unauthorized' }
     post:
       tags: [Bookings]
@@ -318,6 +370,7 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Booking' }
+              example: { id: 87, code: PNK-2611-0087, field: { id: 2, name: Cancha 5B }, startsAt: '2026-11-07T22:00:00-05:00', endsAt: '2026-11-07T23:00:00-05:00', status: cancelled, totalAmount: 70000, depositAmount: 35000, paymentStatus: null, canCancel: false, createdAt: '2026-11-02T10:15:00-05:00' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '404': { $ref: '#/components/responses/NotFound' }
         '409':
@@ -617,6 +670,11 @@ components:
         accessTokenExpiresIn: { type: integer, description: Seconds., examples: [900] }
         refreshToken: { type: string, description: 'Opaque random token, 7 days; stored by the app in secure storage.' }
         player: { $ref: '#/components/schemas/Player' }
+      example:
+        accessToken: eyJhbGciOiJIUzI1NiJ9.demo.signature
+        accessTokenExpiresIn: 900
+        refreshToken: demo-refresh-token
+        player: { id: 1, fullName: Jugador Demo, email: jugador@panenka.co, phone: '3101234567', role: player }
 
     Player:
       type: object
@@ -627,6 +685,7 @@ components:
         email: { type: string, format: email }
         phone: { type: string }
         role: { type: string, enum: [player, admin] }
+      example: { id: 1, fullName: Jugador Demo, email: jugador@panenka.co, phone: '3101234567', role: player }
 
     Field:
       type: object
@@ -717,6 +776,18 @@ components:
           description: Status of the latest payment, or null if none was sent.
         canCancel: { type: boolean, description: Calculated by the server with the cancellation window. }
         createdAt: { type: string, format: date-time }
+      example:
+        id: 87
+        code: PNK-2611-0087
+        field: { id: 2, name: Cancha 5B }
+        startsAt: '2026-11-07T22:00:00-05:00'
+        endsAt: '2026-11-07T23:00:00-05:00'
+        status: pending
+        totalAmount: 70000
+        depositAmount: 35000
+        paymentStatus: null
+        canCancel: true
+        createdAt: '2026-11-02T10:15:00-05:00'
 
     BookingStatus:
       type: string
