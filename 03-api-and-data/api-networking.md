@@ -15,8 +15,16 @@ How `pnk-app` and `pnk-portal` call `pnk-api`. The contract is [`openapi.yaml`](
 |---|-------------|----------------|
 | 1 | `headersInterceptor` | Adds `X-App-Version`, `X-Request-Id` (UUID) and `Accept: application/json` |
 | 2 | `authInterceptor` | Adds `Authorization: Bearer <access token>`; on `401`, refreshes **once** and retries the original request (see `authentication.md`) |
-| 3 | `timeoutInterceptor` | RxJS `timeout(15000)` on every request; uploads use `60000` |
-| 4 | `errorInterceptor` | Maps `HttpErrorResponse` to `AppError` (see `02-code-and-ui/coding-standards.md`) |
+| 3 | `errorInterceptor` | Retries GET on transient failures and maps `HttpErrorResponse` / `TimeoutError` to `AppError` (see `02-code-and-ui/coding-standards.md`) |
+| 4 | `timeoutInterceptor` | RxJS `timeout(15000)` on every request; uploads (`FormData`) use `20000` |
+
+> **Why `errorInterceptor` goes before `timeoutInterceptor`:** Angular runs interceptors in array
+> order on the way out and in reverse order on the way back. The timeout is the innermost one, so a
+> `TimeoutError` travels back through `errorInterceptor`, which turns it into
+> `{ kind: 'network' }` and can retry it. In the opposite order a timeout would escape unmapped.
+>
+> While pnk-api is published through ngrok (see `05-release/deployment.md`),
+> `headersInterceptor` also sends `ngrok-skip-browser-warning: true`.
 
 ## Requests & retries
 

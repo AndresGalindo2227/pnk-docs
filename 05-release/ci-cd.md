@@ -29,3 +29,25 @@
 | dev | dev API | debug installs |
 | staging | staging API | internal testers |
 | prod | prod API | store |
+
+---
+
+## Applied in PANENKA Booking v0.1.0
+
+Workflow: `pnk-app/.github/workflows/ci.yml` (GitHub Actions, `ubuntu-latest`, Node 24).
+
+| Stage | Status | Detail |
+|-------|--------|--------|
+| 1. Lint + static analysis | ✅ in CI | ESLint (`--max-warnings 0`, layer rules), e2e typecheck, Prettier |
+| 2. Unit tests | ✅ in CI | 42 Vitest tests |
+| 3. Build | ✅ in CI (unsigned web build) | `ng build --configuration production`, kept 7 days as the `pnk-app-www` artifact |
+| 3b. Signed Android artifacts | Manual | Built on the release owner's PC (see `signing-and-stores.md`) |
+| 4. Distribution | Manual | `firebase deploy --only hosting`; APK installed with `adb` |
+| 5–6. Pre-release checks / store | Simulated | Release checklist in `releases/` |
+
+- **Triggers:** every pull request, and every push to `develop`, `qa` and `main`.
+- `concurrency` cancels a run when a newer commit arrives on the same branch.
+- The workflow only has `contents: read` permission (least privilege).
+- Typical duration: 45 s – 1 min 30 s.
+- **Next step (v0.2.0):** store the keystore as an encrypted secret and add a `release.yml`
+  workflow on `vX.Y.Z` tags that builds the signed AAB and deploys to Firebase Hosting.

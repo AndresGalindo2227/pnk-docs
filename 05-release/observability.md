@@ -31,3 +31,15 @@
 ---
 
 **Evidence:** [CASE-001](https://github.com/jesusarielgb-works/engineering-casebook/blob/v1.0.0/records/cases/CASE-001-knight-capital-2012.md) — a reused flag woke dead code on one server.
+
+---
+
+## Applied in PANENKA Booking v0.1.0
+
+| Signal | How |
+|--------|-----|
+| API health | `GET /api/v1/health` → `{"status":"ok","version":"0.1.0"}` |
+| Request correlation | Every request carries `X-Request-Id` (UUID) and `X-App-Version`, so a client error can be found in the API logs without logging personal data |
+| Live traffic | ngrok traffic inspector (`http://127.0.0.1:4040`) during demos |
+| Minimum app version | `min_app_version` in the API config (ADR-007) |
+| Crash reporting / analytics | ❌ Not in v0.1.0. Planned: Firebase Crashlytics (same Firebase project) with no PII in events |

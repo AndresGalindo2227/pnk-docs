@@ -15,9 +15,11 @@ staged rollouts, and forced updates. These rules make releases repeatable and re
 | File | Purpose |
 |------|---------|
 | [ci-cd.md](./ci-cd.md) | Pipeline stages from commit to store |
+| [deployment.md](./deployment.md) | Cloud architecture, environments and runbooks (v0.1.0) |
 | [signing-and-stores.md](./signing-and-stores.md) | Signing identities and store distribution |
 | [observability.md](./observability.md) | Crash reporting, analytics, feature flags |
 | [_template-release-checklist.md](./_template-release-checklist.md) | Per-release go/no-go checklist |
+| [releases/v0.1.0.md](./releases/v0.1.0.md) | Go/no-go record of v0.1.0 |
 
 ---
 
