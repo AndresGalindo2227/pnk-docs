@@ -17,6 +17,7 @@ into explicit, enforceable gates: tests, performance budgets, and a security che
 | [testing-strategy.md](./testing-strategy.md) | Test pyramid, naming, coverage targets |
 | [performance-budgets.md](./performance-budgets.md) | Startup, frame rate, size, memory budgets |
 | [mobile-security.md](./mobile-security.md) | Runtime security checklist |
+| [device-test-report.md](./device-test-report.md) | Manual test cases on a real device and the defects they found (v0.1.0) |
 | [_template-test-case.md](./_template-test-case.md) | Template to write a manual/exploratory test case |
 
 ---
