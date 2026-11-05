@@ -10,10 +10,11 @@
 
 ## Dependency direction
 
-```
-Presentation  ─▶  Domain  ◀─  Data
-                    ▲
-          core/di wires each port to its adapter
+```mermaid
+flowchart LR
+    P["Presentation<br/>pages + stores"] -->|"calls use cases"| D["Domain<br/>entities, rules, ports"]
+    A["Data<br/>HTTP repositories, cache, Capacitor adapters"] -->|"implements ports"| D
+    DI["Route providers / core DI"] -.->|"wires each port to its adapter"| A
 ```
 
 - Domain has **zero** outward dependencies: no `@angular/*`, no `@capacitor/*`, no HTTP, no storage.
@@ -43,11 +44,12 @@ Lint runs in CI; a pull request that breaks the rule cannot be merged.
 
 ## State management
 
-One pattern for the whole app — **MVVM with an immutable state per feature store**
+One pattern for the whole app — **MVVM with one store per screen and a private signal**
 (see [ADR-001](./decisions/records/ADR-001-state-management-pattern.md)):
 
-- Each feature has a store (`bookings.store.ts`) that holds an immutable state object and exposes it
-  to the page as a read-only Angular **signal**.
+- Each screen has its own store (`my-bookings.store.ts`, `booking-confirm.store.ts`, …) provided at
+  route level. It keeps an immutable state object in a **private** Angular `signal` and exposes it to
+  the page only as a read-only signal; only the store can change it.
 - A page renders exactly one state object, which always has one of these statuses:
   `loading`, `loaded`, `empty`, `error`, `offline` (plus `permission-denied` where applicable).
 - Pages contain no business logic; they call store methods, the store calls use cases.
