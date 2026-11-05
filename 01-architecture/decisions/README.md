@@ -28,5 +28,7 @@ ADRs document important architectural decisions. Each file = one decision.
 | [ADR-006](./records/ADR-006-web-channels-pwa-and-admin-portal.md) | Web channels: PWA for players and Angular admin portal | Accepted | 2026-10-18 |
 | [ADR-007](./records/ADR-007-api-versioning-and-mobile-backward-compatibility.md) | API versioning and mobile backward compatibility | Accepted | 2026-10-18 |
 | [ADR-008](./records/ADR-008-on-device-storage.md) | On-device storage: secure storage, Preferences and no local database | Accepted | 2026-10-31 |
+| [ADR-009](./records/ADR-009-repository-strategy-polyrepo.md) | Repository strategy: one repository per deployable unit | Accepted | 2026-11-04 |
+| [ADR-010](./records/ADR-010-deployment-https-tunnel-firebase.md) | Deployment of v0.1.0: HTTPS tunnel, Firebase Hosting, local signing | Accepted (temporary) | 2026-11-04 |
 
 > Add a row here as you create ADRs in `records/`.

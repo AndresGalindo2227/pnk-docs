@@ -29,8 +29,12 @@ Decided in [ADR-004](../01-architecture/decisions/records/ADR-004-booking-consis
   (`404` / `409`), the item is discarded and the player is notified.
 - Replaying is safe: the API answers `409 PAYMENT_ALREADY_REVIEWED` for duplicates, so an item is
   never applied twice.
-- Retries use backoff (30 s, 2 min, 10 min) and stop after 5 attempts; the booking detail shows a
-  manual *Reintentar envío* action.
+- The queue is flushed at app start, when the network comes back, when the app returns to the
+  foreground and **every 15 s while it is not empty** (`ReceiptQueueFlusher`).
+- **Being offline never discards a receipt.** Network errors do not count as attempts; only server
+  errors (5xx) count, and the item is dropped after 5 of them. The booking detail shows *"Tu comprobante
+  está guardado…"* while the item waits, and both screens refresh by themselves after the flush
+  (`ReceiptSync` port). Changed in v0.1.0 after defect DEF-005 (`04-quality/device-test-report.md`).
 
 ## Connectivity
 

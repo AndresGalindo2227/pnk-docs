@@ -16,6 +16,8 @@ commits and Pull Requests are written **in English**.
 | `qa` | Quality assurance | Changes selected for testing before release |
 | `main` | Production | Only approved, released changes; every release is tagged |
 
+Why one repository per deployable unit: see [ADR-009](../01-architecture/decisions/records/ADR-009-repository-strategy-polyrepo.md).
+
 All permanent branches are protected by a GitHub ruleset: changes only through a Pull Request,
 no deletions, no force pushes.
 

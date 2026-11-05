@@ -76,8 +76,10 @@ The app maps **`code`**, never the `message`, to what the user sees.
 | 409 | `CANCELLATION_WINDOW_CLOSED` | Less than `cancellationMinHours` before start |
 | 409 | `BOOKING_NOT_CANCELLABLE` | Booking already cancelled or completed |
 | 409 | `PAYMENT_ALREADY_REVIEWED` | Admin reviewing a payment twice |
+| 409 | `RECEIPT_ALREADY_SENT` | A receipt of the booking is already waiting for review |
 | 413 | `FILE_TOO_LARGE` | Receipt photo over 2 MB |
 | 422 | `VALIDATION_ERROR` | Invalid body or parameters; see `details` |
+| 422 | `IDEMPOTENCY_KEY_REUSED` | Same `Idempotency-Key` sent with a different field or start |
 | 429 | `TOO_MANY_REQUESTS` | Too many login attempts; see `Retry-After` |
 | 500 | `INTERNAL_ERROR` | Unexpected failure; never exposes stack traces |
 

@@ -18,6 +18,7 @@ into explicit, enforceable gates: tests, performance budgets, and a security che
 | [performance-budgets.md](./performance-budgets.md) | Startup, frame rate, size, memory budgets |
 | [mobile-security.md](./mobile-security.md) | Runtime security checklist |
 | [device-test-report.md](./device-test-report.md) | Manual test cases on a real device and the defects they found (v0.1.0) |
+| [technical-debt.md](./technical-debt.md) | Known technical debt, its risk and when it is paid |
 | [_template-test-case.md](./_template-test-case.md) | Template to write a manual/exploratory test case |
 
 ---

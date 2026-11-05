@@ -9,14 +9,16 @@ The project follows **SDD (Software Design Documentation)**: design is written a
 
 ## Project repositories
 
-| Repository | Purpose | Branches |
-|---|---|---|
-| [pnk-docs](https://github.com/AndresGalindo2227/pnk-docs) | Governance and documentation (this repository) | `main` |
-| [pnk-api](https://github.com/AndresGalindo2227/pnk-api) | Business core: REST API (PHP 8) integrated with InvFox | `develop`, `qa`, `main` |
-| [pnk-app](https://github.com/AndresGalindo2227/pnk-app) | Mobile app (Ionic, Angular, Capacitor) | `develop`, `qa`, `main` |
-| [pnk-portal](https://github.com/AndresGalindo2227/pnk-portal) | Web portal for players and administrators | `develop`, `qa`, `main` |
-| [pnk-db](https://github.com/AndresGalindo2227/pnk-db) | Versioned MySQL migrations and seed data | `develop`, `qa`, `main` |
-| [pnk-infra](https://github.com/AndresGalindo2227/pnk-infra) | Docker Compose orchestration | `develop`, `qa`, `main` |
+| Repository | Purpose | Branches | Status (v0.1.0) |
+|---|---|---|---|
+| [pnk-docs](https://github.com/AndresGalindo2227/pnk-docs) | Governance and documentation (this repository) | `main` | `v0.1.0` |
+| [pnk-api](https://github.com/AndresGalindo2227/pnk-api) | Business core: REST API (PHP 8) integrated with InvFox | `develop`, `qa`, `main` | `v0.1.0` |
+| [pnk-app](https://github.com/AndresGalindo2227/pnk-app) | Mobile app and PWA (Ionic, Angular, Capacitor) | `develop`, `qa`, `main` | `v0.1.0` (signed APK/AAB) |
+| [pnk-db](https://github.com/AndresGalindo2227/pnk-db) | Versioned MySQL migrations and seed data | `develop`, `qa`, `main` | `v0.2.0` |
+| `pnk-portal` | Web portal for administrators (ADR-006) | — | Planned for v0.2.0 |
+| `pnk-infra` | Docker Compose orchestration | — | Planned |
+
+Why one repository per deployable unit: [ADR-009](./01-architecture/decisions/records/ADR-009-repository-strategy-polyrepo.md).
 
 Product backlog: [pnk-backlog](https://github.com/users/AndresGalindo2227/projects/5)
 
@@ -36,6 +38,13 @@ Filled in this order; `00-governance` applies to every section.
 | [05](./05-release/) | Release | CI/CD, signing, store distribution, observability |
 
 Start with [00-sdd-guide.md](./00-sdd-guide.md) for the methodology.
+
+## Project status (v0.1.0)
+
+![Project status heatmap](./05-release/releases/v0.1.0-status-heatmap.png)
+
+Release record: [05-release/releases/v0.1.0.md](./05-release/releases/v0.1.0.md) ·
+Known technical debt: [04-quality/technical-debt.md](./04-quality/technical-debt.md)
 
 ## Credits
 
