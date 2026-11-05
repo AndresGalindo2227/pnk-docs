@@ -25,7 +25,8 @@ receipt photos taken offline. The framework asks to choose **one** local store a
 - **Tokens** → `@aparajita/capacitor-secure-storage` (Android Keystore / iOS Keychain), behind the
   `TokenStore` port. On the PWA the refresh token is not persisted.
 - **Cache and queue index** → `@capacitor/preferences` (key-value, JSON values), behind repository ports.
-- **Queued receipt photos** → `@capacitor/filesystem`, app data directory.
+- **Queued receipt photos** → stored as a compressed JPEG **data URL** (≤ 1280 px) inside the queue entry in
+  `@capacitor/preferences`. `@capacitor/filesystem` is the planned upgrade if photos grow (see revision).
 - **No SQLite in V1.**
 
 **Justification:** the data volume and query needs are tiny, so a key-value store is enough and
@@ -53,3 +54,13 @@ keeps the app simple; secrets get the platform's hardware-backed storage, as req
 
 **Impact on the system:** `core/storage/`, features `auth`, `my-bookings`, `payments`.
 Documents: `03-api-and-data/authentication.md`, `persistence.md`, `offline-sync.md`.
+
+---
+
+## Revision history
+
+- 2026-11-04 — v0.1.0 keeps queued photos in Preferences instead of `@capacitor/filesystem`: each photo
+  is resized to 1280 px and compressed (≈ 60–200 KB), and the queue rarely holds more than one item, so a
+  third plugin was not justified. If the queue must hold many or larger photos, move them to the
+  filesystem and keep only the path in Preferences.
+

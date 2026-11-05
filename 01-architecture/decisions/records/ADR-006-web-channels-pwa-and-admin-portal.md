@@ -2,7 +2,7 @@
 
 - **ID:** ADR-006
 - **Date:** 2026-10-18
-- **Status:** Accepted
+- **Status:** Accepted — partially implemented in v0.1.0 (see *Implementation status*)
 - **Authors:** Andrés Felipe Galindo Dávila
 
 ---
@@ -42,3 +42,13 @@ and admin screens (tables, filters) do not bloat the mobile bundle.
 **Positive:** one booking flow to test; admin permissions are isolated.
 
 **Negative / Trade-offs:** native-only features (camera, notifications) need web fallbacks in the PWA.
+
+---
+
+## Implementation status (v0.1.0, 2026-11-04)
+
+- **PWA for players: implemented.** The same `pnk-app` build is published on Firebase Hosting
+  (`https://panenka-booking.web.app`, see ADR-010).
+- **`pnk-portal`: deferred to v0.2.0** (HU-11, *Should*). The sprint capacity went to the *Must* stories
+  of the player. Until the portal exists, PANENKA reviews receipts directly in the database.
+

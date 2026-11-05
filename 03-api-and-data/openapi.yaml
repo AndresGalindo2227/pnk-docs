@@ -310,6 +310,8 @@ paths:
         Inserts one `booking_slots` row per sector and hour inside a transaction. If any sector is
         already held, the transaction rolls back and the API answers `409 SLOT_ALREADY_TAKEN` (ADR-004).
         The booking starts as `pending` until the deposit is approved.
+        Reusing an `Idempotency-Key` with the same body returns the original booking; reusing it with a
+        different field or start answers `422 IDEMPOTENCY_KEY_REUSED`.
       parameters:
         - name: Idempotency-Key
           in: header
@@ -528,7 +530,7 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
         '409':
-          description: Payment already reviewed (`PAYMENT_ALREADY_REVIEWED`).
+          description: Payment already reviewed (`PAYMENT_ALREADY_REVIEWED`) or a receipt is already waiting for review (`RECEIPT_ALREADY_SENT`).
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }

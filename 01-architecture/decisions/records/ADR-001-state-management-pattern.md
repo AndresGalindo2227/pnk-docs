@@ -22,9 +22,11 @@ state its own way, screens would be hard to test, and reviews would discuss styl
 
 ## Decision
 
-**We decided:** use **MVVM with one store per feature**. The store keeps an **immutable state object**
-in a `BehaviorSubject` and exposes it to pages as a read-only **signal**. Pages render one state object
-and delegate every action to the store, which calls the use cases.
+**We decided:** use **MVVM with one store per screen**. The store is an `@Injectable()` provided by the
+page (so it lives and dies with it), keeps an **immutable state object** in a private writable **signal**
+and exposes it as a read-only signal (`asReadonly()`). The state is a **discriminated union**
+(`loading | loaded | empty | offline | error`), so a template can only render valid states. Pages render
+that one object and delegate every action to the store, which calls the use cases.
 
 **Justification:**
 Immutable state with explicit statuses makes the five screen states visible in code and trivial to test.
@@ -51,6 +53,11 @@ Signals integrate with Angular change detection without extra libraries.
 
 **Negative / Trade-offs:**
 - A store file per feature, even for small features.
+
+**Revision history:**
+- 2026-11-04 — Aligned with the implementation of v0.1.0: one store **per screen** (not per feature)
+  and state in a private `signal` (the first draft said `BehaviorSubject`). RxJS stays only in the HTTP
+  and session layer. Found while preparing the final review; no code change was needed.
 
 **Impact on the system:**
 - Affected features/screens: all.
