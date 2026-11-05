@@ -1,25 +1,34 @@
 # Architecture Overview
 
 Diagrams follow the [C4 model](https://c4model.com): each box is a person or a software element
-and every arrow states **what** flows between them. The PlantUML sources are in [`diagrams/`](./diagrams/);
-the Mermaid versions below render directly on GitHub.
+and every arrow states **what** flows between them. The Mermaid diagrams below render directly on
+GitHub and describe **what is built in v0.1.0**. Elements drawn with a dashed border are
+**planned (v0.2.0)** and are not part of the current release. The PlantUML sources in
+[`diagrams/`](./diagrams/) show the full target architecture.
 
 ## Level 1 — System context
 
 ```mermaid
 flowchart LR
-    player(["Player<br/>[Person]<br/>Books fields and pays deposits"])
-    admin(["Field administrator<br/>[Person]<br/>Manages schedule and payments"])
-    pnk["PANENKA Booking<br/>[Software system]<br/>App, portal and booking API"]
+    player(["Player<br/>[Person]<br/>Books fields, uploads the deposit receipt"])
+    admin(["Field administrator<br/>[Person]<br/>Approves receipts, manages the schedule"])
+    pnk["PANENKA Booking<br/>[Software system]<br/>Mobile app, PWA and booking API"]
     invfox["InvFox<br/>[Existing system]<br/>Customers, sales, inventory"]
-    wompi["Wompi<br/>[External system]<br/>Nequi, PSE and card payments"]
+    wompi["Wompi<br/>[External system — planned v0.2.0]<br/>Online payments"]
 
-    player -->|"books fields with"| pnk
-    admin -->|"manages bookings with"| pnk
-    pnk -->|"reads and writes customers and sales in"| invfox
-    pnk -->|"charges deposits through"| wompi
-    wompi -->|"notifies payment results to (webhook)"| pnk
+    player -->|"books fields and sends receipts with"| pnk
+    admin -->|"reviews receipts and bookings in"| invfox
+    pnk -->|"reads and writes customers and bookings in (same database)"| invfox
+    pnk -.->|"planned: charges deposits through"| wompi
+
+    classDef planned stroke-dasharray: 5 5,color:#666
+    class wompi planned
 ```
+
+In v0.1.0 the deposit is paid by **Nequi transfer**: the player uploads a photo of the receipt and the
+administrator approves it. Online payment (Wompi) is deferred — see
+[ADR-006](./decisions/records/ADR-006-web-channels-pwa-and-admin-portal.md) and
+[technical debt](../04-quality/technical-debt.md).
 
 ## Level 2 — Containers
 
@@ -29,30 +38,66 @@ flowchart TB
     admin(["Field administrator"])
 
     subgraph PNK ["PANENKA Booking [software system]"]
-        app["Mobile app / PWA — pnk-app<br/>[Ionic 9, Angular 22, Capacitor 8]<br/>Availability, booking, my bookings, payments"]
-        cache[("Local cache<br/>[IndexedDB / Ionic Storage]<br/>Last fields and bookings")]
-        vault[("Secure storage<br/>[Android Keystore]<br/>Access and refresh tokens")]
-        portal["Admin portal — pnk-portal<br/>[Angular 22]<br/>Schedule, receipt approval, fields"]
-        api["Booking API — pnk-api<br/>[PHP 8, REST/JSON, JWT]<br/>Business rules, authorization"]
+        app["Mobile app / PWA — pnk-app<br/>[Ionic 9, Angular 22, Capacitor 8]<br/>Availability, booking, my bookings, receipts"]
+        prefs[("Local cache + receipt queue<br/>[Capacitor Preferences]<br/>My bookings, booking detail, pending photos")]
+        vault[("Secure storage<br/>[Android Keystore — memory only on the PWA]<br/>Access and refresh tokens")]
+        api["Booking API — pnk-api<br/>[PHP 8, REST/JSON, JWT]<br/>Business rules, authorization, idempotency"]
         db[("Database — pnk-db<br/>[MySQL / MariaDB]<br/>InvFox schema + booking tables")]
+        portal["Admin portal — pnk-portal<br/>[Angular 22 — planned v0.2.0]"]
     end
 
     invfoxweb["InvFox web<br/>[Existing PHP system]"]
-    wompi["Wompi<br/>[Payment gateway]"]
-    os["Android OS<br/>Camera, local notifications"]
+    os["Android OS<br/>Camera, gallery, local notifications"]
 
     player --> app
-    admin --> portal
-    app -->|"HTTPS / JSON (OpenAPI contract)"| api
-    portal -->|"HTTPS / JSON"| api
-    app --- cache
+    admin --> invfoxweb
+    admin -.-> portal
+    app -->|"HTTPS / JSON (OpenAPI contract), Bearer JWT, Idempotency-Key"| api
+    portal -.->|"planned: HTTPS / JSON"| api
+    app --- prefs
     app --- vault
-    app -->|"Capacitor plugins, permission just in time"| os
+    app -->|"Capacitor plugins, permission requested just in time"| os
     api -->|"SQL (dedicated user, least privilege)"| db
     invfoxweb -->|"SQL (same schema)"| db
-    api -->|"creates checkout"| wompi
-    wompi -->|"signed webhook"| api
+
+    classDef planned stroke-dasharray: 5 5,color:#666
+    class portal planned
 ```
+
+Storage decisions: [ADR-008](./decisions/records/ADR-008-on-device-storage.md).
+Offline behaviour: [offline-sync](../03-api-and-data/offline-sync.md).
+
+## Deployment — v0.1.0
+
+```mermaid
+flowchart LR
+    subgraph phone ["Android phone"]
+        apk["pnk-app<br/>signed release APK"]
+    end
+    subgraph browser ["Any browser"]
+        pwa["pnk-app PWA"]
+    end
+    subgraph firebase ["Firebase Hosting"]
+        web["panenka-booking.web.app<br/>static build"]
+    end
+    subgraph ngrok ["ngrok (static HTTPS domain)"]
+        tunnel["hangout-frown-salt.ngrok-free.dev"]
+    end
+    subgraph pc ["Developer PC (local server)"]
+        php["pnk-api<br/>PHP 8 :8000"]
+        mysql[("MySQL<br/>InvFox + booking tables")]
+    end
+
+    web -->|"serves"| pwa
+    apk -->|"HTTPS"| tunnel
+    pwa -->|"HTTPS (CORS allow-list)"| tunnel
+    tunnel -->|"forwards"| php
+    php -->|"SQL"| mysql
+```
+
+Why this set-up and what replaces it in production:
+[ADR-010](./decisions/records/ADR-010-deployment-https-tunnel-firebase.md) and
+[deployment](../05-release/deployment.md).
 
 ## Booking model — field sectors
 
