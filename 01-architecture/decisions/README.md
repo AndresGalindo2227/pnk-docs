@@ -30,5 +30,6 @@ ADRs document important architectural decisions. Each file = one decision.
 | [ADR-008](./records/ADR-008-on-device-storage.md) | On-device storage: secure storage, Preferences and no local database | Accepted | 2026-10-31 |
 | [ADR-009](./records/ADR-009-repository-strategy-polyrepo.md) | Repository strategy: one repository per deployable unit | Accepted | 2026-11-04 |
 | [ADR-010](./records/ADR-010-deployment-https-tunnel-firebase.md) | Deployment of v0.1.0: HTTPS tunnel, Firebase Hosting, local signing | Accepted (temporary) | 2026-11-04 |
+| [ADR-011](./records/ADR-011-mvp-scope-v0.1.0.md) | Scope of v0.1.0: MVP limited to the player booking flow | Accepted | 2026-11-06 |
 
 > Add a row here as you create ADRs in `records/`.
